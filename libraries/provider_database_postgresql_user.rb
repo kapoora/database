@@ -55,7 +55,38 @@ class Chef
               options += " #{Chef::Resource::PostgresqlDatabaseUser::SUPERUSER_DEFAULT ? 'SUPERUSER' : 'NOSUPERUSER'}" unless @new_resource.respond_to?(:superuser)
 
               statement = "CREATE USER \"#{@new_resource.username}\""
-              statement += " WITH #{options}" if options.length > 0
+              statement += " WITH #{optionss}" if options.length > 0
+
+              db('template1').query(statement)
+              @new_resource.updated_by_last_action(true)
+            ensure
+              close
+            end
+          else
+            begin
+              log 'message' do
+                  message 'ARPIT___ELSE.'
+                  level :info
+              end
+              options = ''
+              options += " PASSWORD '#{@new_resource.password}'" if @new_resource.password
+
+              # Options from Postgresql specific resource
+              options += " #{@new_resource.createdb ? 'CREATEDB' : 'NOCREATEDB'}" if @new_resource.respond_to?(:createdb)
+              options += " #{@new_resource.createrole ? 'CREATEROLE' : 'NOCREATEROLE'}" if @new_resource.respond_to?(:createrole)
+              options += " #{@new_resource.login ? 'LOGIN' : 'NOLOGIN'}" if @new_resource.respond_to?(:login)
+              options += " #{@new_resource.replication ? 'REPLICATION' : 'NOREPLICATION'}" if @new_resource.respond_to?(:replication) && version_greater_than?(90_100)
+              options += " #{@new_resource.superuser ? 'SUPERUSER' : 'NOSUPERUSER'}" if @new_resource.respond_to?(:superuser)
+
+              # Options from a non Postgresql specific resource
+              options += " #{Chef::Resource::PostgresqlDatabaseUser::CREATE_DB_DEFAULT ? 'CREATEDB' : 'NOCREATEDB'}" unless @new_resource.respond_to?(:createdb)
+              options += " #{Chef::Resource::PostgresqlDatabaseUser::CREATE_ROLE_DEFAULT ? 'CREATEROLE' : 'NOCREATEROLE'}" unless @new_resource.respond_to?(:createrole)
+              options += " #{Chef::Resource::PostgresqlDatabaseUser::LOGIN_DEFAULT ? 'LOGIN' : 'NOLOGIN'}" unless @new_resource.respond_to?(:login)
+              options += " #{Chef::Resource::PostgresqlDatabaseUser::REPLICATION_DEFAULT ? 'REPLICATION' : 'NOREPLICATION'}" unless @new_resource.respond_to?(:replication) || !version_greater_than?(90_100)
+              options += " #{Chef::Resource::PostgresqlDatabaseUser::SUPERUSER_DEFAULT ? 'SUPERUSER' : 'NOSUPERUSER'}" unless @new_resource.respond_to?(:superuser)
+
+              statement = "ALTER USER \"#{@new_resource.username}\""
+              statement += " WITH #{optionss}" if options.length > 0
 
               db('template1').query(statement)
               @new_resource.updated_by_last_action(true)
@@ -64,7 +95,7 @@ class Chef
             end
           end
         end
-
+        
         def action_drop
           if exists?
             begin
